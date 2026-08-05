@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { fromDbPatient, isSupabaseConfigured, supabase, toDbPatient } from './supabaseClient.js';
 const makeIcon = (symbol) => ({ size = 18 }) => <span aria-hidden="true" style={{fontSize: Math.max(14, size - 1), lineHeight: 1}}>{symbol}</span>;
-const Plus=makeIcon('＋'), Search=makeIcon('⌕'), X=makeIcon('×'), Check=makeIcon('✓'), Clock3=makeIcon('◷'), ClipboardList=makeIcon('☷'), Trash2=makeIcon('⌫'), ChevronDown=makeIcon('⌄'), ChevronUp=makeIcon('⌃'), Archive=makeIcon('▣'), RotateCcw=makeIcon('↺');
+const Plus=makeIcon('＋'), Search=makeIcon('⌕'), X=makeIcon('×'), Check=makeIcon('✓'), Clock3=makeIcon('◷'), ClipboardList=makeIcon('☷'), Trash2=makeIcon('⌫'), ChevronDown=makeIcon('⌄'), ChevronUp=makeIcon('⌃'), RotateCcw=makeIcon('↺');
 import './styles.css';
 
 const STORAGE_KEY = 'er-flow-tracker-v1';
@@ -48,32 +49,15 @@ const SAMPLE_PATIENTS = [
     complaint: '', impression: 'R/O UTI VS SVI', pgi: 'GARGARAN',
     status: 'Consult', disposition: '-',
     tasks: ['Chest Xray']
-  },
-  {
-    code: 'ABELLA, XIAN ANDRES QUIRANTE', erBed: 'ER1 - 5', service: 'Pediatrics',
-    complaint: 'Emergency case registry sample', status: 'Consult',
-    tasks: ['CBC', 'Reassessment']
-  },
-  {
-    code: 'ALBELLAR, JAYRALDINE MONTES', erBed: 'ER1 - 14', service: 'Obstetrics and Gynecology',
-    complaint: 'Emergency case registry sample', status: 'Consult',
-    tasks: ['Urinalysis', 'Chest Xray']
-  },
-  {
-    code: 'AUGUSTO, CARLOS WAGWAG', erBed: 'ER1 - 9', service: 'Internal Medicine',
-    complaint: 'Emergency case registry sample', status: 'Consult',
-    tasks: ['Chest Xray']
-  },
-  {
-    code: 'DIO, AKIM MATEO APINES', erBed: 'ER1 - 6', service: 'Pediatrics',
-    complaint: 'Emergency case registry sample', status: 'Waiting for room',
-    tasks: ['Room assignment']
-  },
-  {
-    code: 'GOMEZ, HELEN TIRO', erBed: 'ER2 - D', service: 'Internal Medicine',
-    complaint: 'Emergency case registry sample', status: 'Consult',
-    tasks: ['Reassessment']
   }
+];
+
+const RETIRED_SAMPLE_CODES = [
+  'ABELLA, XIAN ANDRES QUIRANTE',
+  'ALBELLAR, JAYRALDINE MONTES',
+  'AUGUSTO, CARLOS WAGWAG',
+  'DIO, AKIM MATEO APINES',
+  'GOMEZ, HELEN TIRO'
 ];
 
 const blankPatient = {
@@ -267,10 +251,44 @@ function App() {
   const [newTask, setNewTask] = useState('');
   const [toast, setToast] = useState(null);
   const [showDocsPad, setShowDocsPad] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? 'Connecting to Supabase...' : 'Local only');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
   }, [patients]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let active = true;
+
+    async function loadRemotePatients() {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('updated_at_ms', { ascending: false });
+
+      if (!active) return;
+      if (error) {
+        setSyncStatus('Supabase connection error');
+        showToast('Supabase load failed');
+        return;
+      }
+
+      setPatients((data || []).map(fromDbPatient).map(normalizePatient));
+      setSyncStatus('Shared board');
+    }
+
+    loadRemotePatients();
+    const channel = supabase
+      .channel('patients-board')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, loadRemotePatients)
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -315,7 +333,7 @@ function App() {
     setShowForm(true);
   }
 
-  function savePatient(e) {
+  async function savePatient(e) {
     e.preventDefault();
     if (!form.code.trim()) return;
     const isEditing = Boolean(editingId);
@@ -327,10 +345,16 @@ function App() {
       updatedAt: Date.now(),
       updatedLabel: nowLabel()
     };
-    setPatients(prev => editingId
-      ? prev.map(p => p.id === editingId ? payload : p)
-      : [payload, ...prev]
-    );
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('patients').upsert(toDbPatient(payload));
+      if (error) {
+        showToast('Supabase save failed');
+        return;
+      }
+    }
+
+    setPatients(prev => editingId ? prev.map(p => p.id === editingId ? payload : p) : [payload, ...prev]);
     setShowForm(false);
     showToast(isEditing ? 'Patient updated' : 'Patient added');
   }
@@ -343,43 +367,65 @@ function App() {
     showToast(`${clean} added`);
   }
 
-  function toggleTask(patientId, taskId) {
+  async function toggleTask(patientId, taskId) {
     let message = 'Checklist updated';
-    setPatients(prev => prev.map(p => p.id === patientId ? {
-      ...p,
-      tasks: (p.tasks || []).map(t => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) return;
+    const updatedPatient = {
+      ...patient,
+      tasks: (patient.tasks || []).map(t => {
         if (t.id !== taskId) return t;
         message = t.done ? `${t.label} reopened` : `${t.label} completed`;
         return { ...t, done: !t.done };
       }),
       updatedAt: Date.now(), updatedLabel: nowLabel()
-    } : p));
+    };
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('patients').upsert(toDbPatient(updatedPatient));
+      if (error) {
+        showToast('Supabase update failed');
+        return;
+      }
+    }
+
+    setPatients(prev => prev.map(p => p.id === patientId ? updatedPatient : p));
     showToast(message);
   }
 
-  function removePatient(id) {
+  async function removePatient(id) {
     if (window.confirm('Remove this patient from the tracker?')) {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from('patients').delete().eq('id', id);
+        if (error) {
+          showToast('Supabase delete failed');
+          return;
+        }
+      }
       setPatients(prev => prev.filter(p => p.id !== id));
       showToast('Patient removed');
     }
   }
 
-  function clearDischarged() {
-    if (window.confirm('Delete all discharged patients?')) {
-      setPatients(prev => prev.filter(p => p.status !== 'Discharged'));
-      showToast('Discharged patients cleared');
-    }
-  }
-
-  function clearAll() {
-    if (window.confirm('Delete ALL tracker data on this device?')) {
+  async function clearAll() {
+    const target = isSupabaseConfigured ? 'shared Supabase board' : 'this device';
+    if (window.confirm(`Delete ALL tracker data on ${target}?`)) {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from('patients').delete().neq('id', '');
+        if (error) {
+          showToast('Supabase clear failed');
+          return;
+        }
+      }
       setPatients([]);
       showToast('All tracker data cleared');
     }
   }
 
-  function loadSampleData() {
-    const existingCodes = new Set(patients.map(p => (p.code || '').trim().toLowerCase()));
+  async function loadSampleData() {
+    const retiredCodes = new Set(RETIRED_SAMPLE_CODES.map(code => code.toLowerCase()));
+    const cleanedPatients = patients.filter(p => !retiredCodes.has((p.code || '').trim().toLowerCase()));
+    const existingCodes = new Set(cleanedPatients.map(p => (p.code || '').trim().toLowerCase()));
     const loadedAt = Date.now();
     const samples = SAMPLE_PATIENTS
       .filter(sample => !existingCodes.has(sample.code.toLowerCase()))
@@ -393,14 +439,33 @@ function App() {
         tasks: (sample.tasks || []).map(label => ({ id: createId(), label, done: false }))
       }));
 
-    if (samples.length === 0) {
+    if (samples.length === 0 && cleanedPatients.length === patients.length) {
       showToast('Sample data is already loaded');
       return;
     }
 
-    setPatients(prev => [...samples, ...prev]);
+    const nextPatients = [...samples, ...cleanedPatients];
+    if (isSupabaseConfigured) {
+      const retiredList = [...retiredCodes];
+      if (retiredList.length) {
+        const { error } = await supabase.from('patients').delete().in('code', RETIRED_SAMPLE_CODES);
+        if (error) {
+          showToast('Supabase cleanup failed');
+          return;
+        }
+      }
+      if (samples.length) {
+        const { error } = await supabase.from('patients').upsert(samples.map(toDbPatient));
+        if (error) {
+          showToast('Supabase samples failed');
+          return;
+        }
+      }
+    }
+
+    setPatients(nextPatients);
     setFilter('All');
-    showToast(`${samples.length} sample patients loaded`);
+    showToast(samples.length ? `${samples.length} sample patients loaded` : 'Old sample rows removed');
   }
 
   function showToast(message) {
@@ -424,6 +489,7 @@ function App() {
       <header>
         <div>
           <h1>ER Board Tracker</h1>
+          <p className="sync-status">{syncStatus}</p>
         </div>
         <button type="button" className="primary" onClick={openNew}><Plus size={19}/> Add patient</button>
       </header>
@@ -448,8 +514,8 @@ function App() {
 
       <section className="toolbar">
         <div className="searchbox"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, impression, room..."/></div>
-        <button type="button" className="ghost docs-button" onClick={() => setShowDocsPad(true)}>Copy docs tables</button>
-        <button type="button" className="ghost sample-button" onClick={loadSampleData}>Load sample data</button>
+        <button type="button" className="ghost docs-button" onClick={() => setShowDocsPad(true)}>Docs rows</button>
+        <button type="button" className="ghost sample-button" onClick={loadSampleData}>Samples</button>
         <button type="button" className="ghost" onClick={() => setFilter('All')}>All</button>
       </section>
 
@@ -481,6 +547,17 @@ function App() {
               return (
                 <article className={`patient-record ${expanded ? 'selected' : ''}`} key={patient.id}>
                   <button type="button" className="system-row patient-row" onClick={() => setExpandedId(expanded ? null : patient.id)}>
+                    <div className="mobile-row">
+                      <div className="mobile-row-main">
+                        <strong>{patient.code || '-'}</strong>
+                        <span>{formatAgeSex(patient)} / {patient.physician || patient.service || '-'}</span>
+                        <p>{patient.impression || '-'}</p>
+                      </div>
+                      <div className="mobile-row-side">
+                        <span className={`status ${meta.color}`}>{patient.status}</span>
+                        <span className="mobile-pending">{pending.length} pending {expanded ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}</span>
+                      </div>
+                    </div>
                     <div className="name-cell">{patient.code || '-'}</div>
                     <div>{formatAgeSex(patient)}</div>
                     <div>{patient.physician || patient.service || '-'}</div>
@@ -529,13 +606,12 @@ function App() {
       </main>
 
       <footer>
-        <button type="button" className="ghost" onClick={clearDischarged}><Archive size={17}/> Clear discharged</button>
         <button type="button" className="ghost danger" onClick={clearAll}><RotateCcw size={17}/> Clear all data</button>
       </footer>
 
       {showForm && (
-        <div className="modal-backdrop" onMouseDown={() => setShowForm(false)}>
-          <form className="modal" onSubmit={savePatient} onMouseDown={e => e.stopPropagation()}>
+        <div className="modal-backdrop form-backdrop" onMouseDown={() => setShowForm(false)}>
+          <form className="modal form-modal" onSubmit={savePatient} onMouseDown={e => e.stopPropagation()}>
             <div className="modal-head">
               <div><p className="eyebrow">{editingId ? 'UPDATE RECORD' : 'NEW RECORD'}</p><h2>{editingId ? 'Edit patient' : 'Add patient'}</h2></div>
               <button type="button" className="icon" onClick={() => setShowForm(false)}><X/></button>
