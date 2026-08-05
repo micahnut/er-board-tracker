@@ -237,6 +237,10 @@ function nowLabel() {
   }).format(new Date());
 }
 
+function uppercaseInput(value) {
+  return value.toLocaleUpperCase('en-US');
+}
+
 function App() {
   const [patients, setPatients] = useState(() => {
     try { return (JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(normalizePatient); }
@@ -617,9 +621,9 @@ function App() {
             </div>
 
             <div className="form-grid two">
-              <label>Patient Name (Last Name, First Name)*<input required value={form.code} onChange={e => setForm({...form, code:e.target.value})} placeholder="DOE, JOHN"/></label>
+              <label>Patient Name (Last Name, First Name)*<input required value={form.code} onChange={e => setForm({...form, code:uppercaseInput(e.target.value)})} placeholder="DOE, JOHN"/></label>
               <div className="form-grid age-sex">
-                <label>Age<input value={form.age || ''} onChange={e => setForm({...form, age:e.target.value})} placeholder="6Y"/></label>
+                <label>Age<input value={form.age || ''} onChange={e => setForm({...form, age:uppercaseInput(e.target.value)})} placeholder="6Y"/></label>
                 <label>Sex<select value={form.sex || ''} onChange={e => setForm({...form, sex:e.target.value})}>
                   <option value="">-</option>
                   <option value="M">M</option>
@@ -627,27 +631,23 @@ function App() {
                 </select></label>
               </div>
             </div>
-            <label>Impression<input value={form.impression || ''} onChange={e => setForm({...form, impression:e.target.value})} placeholder="R/O dengue vs SVI"/></label>
+            <label>Impression<input value={form.impression || ''} onChange={e => setForm({...form, impression:uppercaseInput(e.target.value)})} placeholder="R/O DENGUE VS SVI"/></label>
             <div className="form-grid two">
-              <label>ER bed<input value={form.erBed} onChange={e => setForm({...form, erBed:e.target.value})} placeholder="ER1 - 5"/></label>
-              <label>Service<select value={form.service} onChange={e => setForm({...form, service:e.target.value})}>
-                <option value="">-</option>
-                {SERVICES.map(service => <option key={service} value={service}>{service}</option>)}
-              </select></label>
+              <label>ER bed<input value={form.erBed} onChange={e => setForm({...form, erBed:uppercaseInput(e.target.value)})} placeholder="ER1 - 5"/></label>
             </div>
             <div className="form-grid two">
-              <label>Attending physician<input value={form.physician || ''} onChange={e => setForm({...form, physician:e.target.value})} placeholder="DR. SANTOS"/></label>
-              <label>PGI / CIC<input value={form.pgi || ''} onChange={e => setForm({...form, pgi:e.target.value})} placeholder="COBARDE"/></label>
+              <label>Attending physician<input value={form.physician || ''} onChange={e => setForm({...form, physician:uppercaseInput(e.target.value)})} placeholder="DR. SANTOS"/></label>
+              <label>PGI / CIC<input value={form.pgi || ''} onChange={e => setForm({...form, pgi:uppercaseInput(e.target.value)})} placeholder="COBARDE"/></label>
             </div>
             <div className="form-grid two">
               <label>Disposition<select value={form.status} onChange={e => setForm({...form, status:e.target.value})}>{STATUSES.map(s => <option key={s.value}>{s.value}</option>)}</select></label>
-              <label>Room assignment<input value={form.room} onChange={e => setForm({...form, room:e.target.value})} placeholder="412-B or waiting"/></label>
+              <label>Room assignment<input value={form.room} onChange={e => setForm({...form, room:uppercaseInput(e.target.value)})} placeholder="412-B OR WAITING"/></label>
             </div>
 
             <div className="task-editor">
               <div className="section-title"><ClipboardList size={17}/><strong>Checklist</strong></div>
               <div className="quick-tasks">{QUICK_TASKS.map(t => <button type="button" key={t} onClick={() => addTask(t)}>+ {t}</button>)}</div>
-              <div className="add-task-row"><input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Add custom pending item" onKeyDown={e => { if(e.key==='Enter'){ e.preventDefault(); addTask(newTask); }}}/><button type="button" onClick={() => addTask(newTask)}>Add</button></div>
+              <div className="add-task-row"><input value={newTask} onChange={e => setNewTask(uppercaseInput(e.target.value))} placeholder="ADD CUSTOM PENDING ITEM" onKeyDown={e => { if(e.key==='Enter'){ e.preventDefault(); addTask(newTask); }}}/><button type="button" onClick={() => addTask(newTask)}>Add</button></div>
               {(form.tasks || []).map(task => (
                 <div className="edit-task" key={task.id}>
                   <button type="button" className={`checkbox ${task.done ? 'checked' : ''}`} onClick={() => setForm(f => ({...f, tasks:f.tasks.map(t => t.id===task.id ? {...t, done:!t.done}:t)}))}>{task.done && <Check size={14}/>}</button>
@@ -657,7 +657,7 @@ function App() {
               ))}
             </div>
 
-            <label>Notes<textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes:e.target.value})} placeholder="Repeat temperature at 2 PM"/></label>
+            <label>Notes<textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes:uppercaseInput(e.target.value)})} placeholder="REPEAT TEMPERATURE AT 2 PM"/></label>
             <button className="primary full" type="submit"><Check size={18}/> Save patient</button>
           </form>
         </div>
