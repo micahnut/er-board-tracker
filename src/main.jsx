@@ -515,7 +515,6 @@ function App() {
       <section className="toolbar">
         <div className="searchbox"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, impression, room..."/></div>
         <button type="button" className="ghost docs-button" onClick={() => setShowDocsPad(true)}>Docs rows</button>
-        <button type="button" className="ghost sample-button" onClick={loadSampleData}>Samples</button>
         <button type="button" className="ghost" onClick={() => setFilter('All')}>All</button>
       </section>
 
