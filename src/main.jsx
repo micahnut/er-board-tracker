@@ -21,31 +21,31 @@ const SERVICES = ['Pediatrics', 'Internal Medicine', 'Family Medicine', 'Surgery
 
 const SAMPLE_PATIENTS = [
   {
-    code: 'NAVALES, GHAEL JOHN', age: '4Y', sex: 'M', physician: 'DR. HERNAEZ',
+    code: 'DOE, JOHN', age: '4Y', sex: 'M', physician: 'DR. HERNAEZ',
     complaint: '', impression: 'R/O DENGUE FEVER VS UTI VS SVI', room: '902', pgi: 'COBARDE',
     status: 'For admission', disposition: 'For admission',
     tasks: ['Room assignment']
   },
   {
-    code: 'MANULAT, LUKE ISAIAH', age: '1Y', sex: 'M', physician: 'DR. GERRA',
+    code: 'DOE, JAMES', age: '1Y', sex: 'M', physician: 'DR. GERRA',
     complaint: '', impression: 'AGE W/ MODERATE DEHYDRATION; R/O UTI', room: '808', pgi: 'COBARDE',
     status: 'For admission', disposition: 'For admission',
     tasks: ['Chest Xray']
   },
   {
-    code: 'ROSALES, HALSTON', age: '6Y', sex: 'M', physician: 'DR. MARATAS',
+    code: 'DOE, MICHAEL', age: '6Y', sex: 'M', physician: 'DR. MARATAS',
     complaint: '', impression: 'R/O DENGUE VS SVI', pgi: 'GARGARAN',
     status: 'Discharged', disposition: 'DISCHARGED',
     tasks: []
   },
   {
-    code: 'RIOS, JEFFERY', age: '19Y', sex: 'M', physician: 'DR. E. UY',
+    code: 'DOE, ALEX', age: '19Y', sex: 'M', physician: 'DR. E. UY',
     complaint: '', impression: 'R/O SVI', pgi: 'GARGARAN',
     status: 'Discharged', disposition: 'DISCHARGED',
     tasks: []
   },
   {
-    code: 'CABASAG, NATHAN', age: '5Y', sex: 'M', physician: 'DR. C. UY',
+    code: 'DOE, SAM', age: '5Y', sex: 'M', physician: 'DR. C. UY',
     complaint: '', impression: 'R/O UTI VS SVI', pgi: 'GARGARAN',
     status: 'Consult', disposition: '-',
     tasks: ['Chest Xray']
@@ -101,11 +101,11 @@ function normalizePatient(patient) {
     Obstetrics: 'Obstetrics and Gynecology'
   };
   const knownImpressions = {
-    'navales, ghael john': 'R/O DENGUE FEVER VS UTI VS SVI',
-    'manulat, luke isaiah': 'AGE W/ MODERATE DEHYDRATION; R/O UTI',
-    'rosales, halston': 'R/O DENGUE VS SVI',
-    'rios, jeffery': 'R/O SVI',
-    'cabasag, nathan': 'R/O UTI VS SVI'
+    'doe, john': 'R/O DENGUE FEVER VS UTI VS SVI',
+    'doe, james': 'AGE W/ MODERATE DEHYDRATION; R/O UTI',
+    'doe, michael': 'R/O DENGUE VS SVI',
+    'doe, alex': 'R/O SVI',
+    'doe, sam': 'R/O UTI VS SVI'
   };
   const knownImpression = knownImpressions[(patient.code || '').trim().toLowerCase()];
   const impression = patient.impression || knownImpression || '';
@@ -618,7 +618,7 @@ function App() {
             </div>
 
             <div className="form-grid two">
-              <label>Patient code or initials*<input required value={form.code} onChange={e => setForm({...form, code:e.target.value})} placeholder="ER-07"/></label>
+              <label>Patient Name (Last Name, First Name)*<input required value={form.code} onChange={e => setForm({...form, code:e.target.value})} placeholder="DOE, JOHN"/></label>
               <div className="form-grid age-sex">
                 <label>Age<input value={form.age || ''} onChange={e => setForm({...form, age:e.target.value})} placeholder="6Y"/></label>
                 <label>Sex<select value={form.sex || ''} onChange={e => setForm({...form, sex:e.target.value})}>
