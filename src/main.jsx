@@ -676,7 +676,7 @@ function App() {
                 <div className="docs-section" key={section.title}>
                   <h3>{section.title}</h3>
                   {section.rows.length === 0 ? <p className="muted">No rows.</p> : section.rows.map((row, index) => (
-                    <button type="button" className="docs-row" key={`${section.title}-${index}`} onClick={() => copyDocsText(rowToText(row), 'Row copied', `<table><tbody>${rowToHtml(row)}</tbody></table>`)}>
+                    <button type="button" className="docs-row" key={`${section.title}-${index}`} onClick={() => copyDocsText(rowToText(row), 'Copied', `<table><tbody>${rowToHtml(row)}</tbody></table>`)}>
                       {row.map(tableCell).join(' | ')}
                     </button>
                   ))}
