@@ -10,6 +10,7 @@ export function toDbPatient(patient) {
   return {
     id: patient.id,
     code: patient.code || '',
+    mrn: patient.mrn || '',
     age: patient.age || '',
     sex: patient.sex || '',
     age_sex: patient.ageSex || '',
@@ -34,6 +35,7 @@ export function fromDbPatient(row) {
   return {
     id: row.id,
     code: row.code || '',
+    mrn: row.mrn || '',
     age: row.age || '',
     sex: row.sex || '',
     ageSex: row.age_sex || '',
@@ -53,4 +55,3 @@ export function fromDbPatient(row) {
     updatedLabel: row.updated_label || ''
   };
 }
-

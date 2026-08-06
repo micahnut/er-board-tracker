@@ -3,6 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.patients (
   id text primary key,
   code text not null default '',
+  mrn text not null default '',
   age text not null default '',
   sex text not null default '',
   age_sex text not null default '',
@@ -22,6 +23,9 @@ create table if not exists public.patients (
   updated_label text not null default '',
   created_at timestamptz not null default now()
 );
+
+alter table public.patients
+add column if not exists mrn text not null default '';
 
 alter table public.patients enable row level security;
 

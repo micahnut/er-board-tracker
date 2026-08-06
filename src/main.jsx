@@ -61,7 +61,7 @@ const RETIRED_SAMPLE_CODES = [
 ];
 
 const blankPatient = {
-  code: '', age: '', sex: '', ageSex: '', complaint: '', impression: '', erBed: '', service: '',
+  code: '', mrn: '', age: '', sex: '', ageSex: '', complaint: '', impression: '', erBed: '', service: '',
   physician: '', pgi: '', status: 'Consult', disposition: '', room: '', notes: '', tasks: []
 };
 
@@ -311,7 +311,7 @@ function App() {
         if (filter === 'Discharged' && p.status !== 'Discharged') return false;
         if (filter === 'Pending' && !(p.tasks || []).some(t => !t.done)) return false;
         if (!q) return true;
-        return [p.code, formatAgeSex(p), p.impression, p.erBed, p.service, p.physician, p.pgi, p.status, p.room]
+        return [p.code, p.mrn, formatAgeSex(p), p.impression, p.erBed, p.service, p.physician, p.pgi, p.status, p.room]
           .some(v => (v || '').toLowerCase().includes(q));
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
@@ -534,6 +534,7 @@ function App() {
           <div className="system-table">
             <div className="system-row system-head" aria-hidden="true">
               <div>Name</div>
+              <div>MRN</div>
               <div>Age/Sex</div>
               <div>Attending Physician</div>
               <div>Impression</div>
@@ -553,7 +554,7 @@ function App() {
                     <div className="mobile-row">
                       <div className="mobile-row-main">
                         <strong>{patient.code || '-'}</strong>
-                        <span>{formatAgeSex(patient)} / {patient.physician || patient.service || '-'}</span>
+                        <span>MRN: {patient.mrn || '-'} / {formatAgeSex(patient)} / {patient.physician || patient.service || '-'}</span>
                         <p>{patient.impression || '-'}</p>
                       </div>
                       <div className="mobile-row-side">
@@ -562,6 +563,7 @@ function App() {
                       </div>
                     </div>
                     <div className="name-cell">{patient.code || '-'}</div>
+                    <div>{patient.mrn || '-'}</div>
                     <div>{formatAgeSex(patient)}</div>
                     <div>{patient.physician || patient.service || '-'}</div>
                     <div className="impression-cell">{patient.impression || '-'}</div>
@@ -577,6 +579,7 @@ function App() {
                   {expanded && (
                     <div className="card-body">
                       <div className="detail-grid">
+                        <div><label>MRN</label><p>{patient.mrn || '-'}</p></div>
                         <div><label>Room</label><p>{patient.room || 'Not assigned'}</p></div>
                         <div><label>ER bed / service</label><p>{[patient.erBed, patient.service].filter(Boolean).join(' / ') || '-'}</p></div>
                       </div>
@@ -622,6 +625,9 @@ function App() {
 
             <div className="form-grid two">
               <label>Patient Name (Last Name, First Name)*<input required value={form.code} onChange={e => setForm({...form, code:uppercaseInput(e.target.value)})} placeholder="DOE, JOHN"/></label>
+              <label>MRN<input value={form.mrn || ''} onChange={e => setForm({...form, mrn:uppercaseInput(e.target.value)})} placeholder="123456"/></label>
+            </div>
+            <div className="form-grid two">
               <div className="form-grid age-sex">
                 <label>Age<input value={form.age || ''} onChange={e => setForm({...form, age:uppercaseInput(e.target.value)})} placeholder="6Y"/></label>
                 <label>Sex<select value={form.sex || ''} onChange={e => setForm({...form, sex:e.target.value})}>
