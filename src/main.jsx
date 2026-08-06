@@ -144,7 +144,7 @@ function escapeHtml(value) {
 
 function buildDocsSections(patients) {
   const forAdmission = patients.filter(patient => patient.status === 'For admission');
-  const consults = patients.filter(patient => patient.status === 'Consult');
+  const consults = patients.filter(patient => ['Consult', 'Discharged'].includes(patient.status));
 
   return [
     {
