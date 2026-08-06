@@ -10,6 +10,7 @@ const STORAGE_KEY = 'er-flow-tracker-v1';
 const STATUSES = [
   { value: 'For admission', color: 'blue' },
   { value: 'Discharged', color: 'green' },
+  { value: 'HAMA', color: 'red' },
   { value: 'Consult', color: 'orange' },
   { value: 'Waiting for room', color: 'purple' },
   { value: 'Admitted', color: 'teal' },
@@ -143,8 +144,17 @@ function escapeHtml(value) {
 }
 
 function buildDocsSections(patients) {
-  const forAdmission = patients.filter(patient => patient.status === 'For admission');
-  const consults = patients.filter(patient => ['Consult', 'Discharged'].includes(patient.status));
+  const forAdmission = patients.filter(patient => [
+    'Waiting for room',
+    'Admitted',
+    'Transferred to wards'
+  ].includes(patient.status));
+  const consults = patients.filter(patient => [
+    'For admission',
+    'Consult',
+    'Discharged',
+    'HAMA'
+  ].includes(patient.status));
 
   return [
     {
@@ -306,7 +316,7 @@ function App() {
       .filter(p => {
         const completed = ['Discharged', 'Admitted', 'Transferred to wards'].includes(p.status);
         if (filter === 'Active' && completed) return false;
-        if (filter === 'Consults' && p.status !== 'Consult') return false;
+        if (filter === 'Consults' && !['Consult', 'For admission', 'Discharged', 'HAMA'].includes(p.status)) return false;
         if (filter === 'Admissions' && !['Waiting for room', 'Admitted', 'Transferred to wards'].includes(p.status)) return false;
         if (filter === 'Discharged' && p.status !== 'Discharged') return false;
         if (filter === 'Pending' && !(p.tasks || []).some(t => !t.done)) return false;
@@ -318,7 +328,7 @@ function App() {
   }, [patients, query, filter]);
 
   const activeCount = patients.filter(p => !['Discharged', 'Admitted', 'Transferred to wards'].includes(p.status)).length;
-  const consultCount = patients.filter(p => p.status === 'Consult').length;
+  const consultCount = patients.filter(p => ['Consult', 'For admission', 'Discharged', 'HAMA'].includes(p.status)).length;
   const admissionCount = patients.filter(p => ['Waiting for room', 'Admitted', 'Transferred to wards'].includes(p.status)).length;
   const pendingCount = patients.filter(p => (p.tasks || []).some(t => !t.done)).length;
   const dischargedCount = patients.filter(p => p.status === 'Discharged').length;
